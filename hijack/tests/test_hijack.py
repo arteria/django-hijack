@@ -44,10 +44,10 @@ class BaseHijackTests(TestCase):
         self.client.logout()
 
     def _hijack(self, user):
-        return self.client.post('/hijack/%d/' % user.id, follow=True)
+        return self.client.post(reverse('hijack:acquire', args=[user.pk]), follow=True)
 
     def _release_hijack(self):
-        response = self.client.post('/hijack/release-hijack/', follow=True)
+        response = self.client.post(reverse('hijack:release'), follow=True)
         self.assertEqual(response.status_code, 200)
         self.assertFalse('hijacked-warning' in str(response.content))
         return response
@@ -64,9 +64,9 @@ class HijackTests(BaseHijackTests):
     def test_basic_hijack(self):
         client = Client()
         client.login(username=self.superuser_username, password=self.superuser_password)
-        hijacked_response = client.post('/hijack/%d/' % self.user.id, follow=True)
+        hijacked_response = client.post(reverse('hijack:acquire', args=[self.user.pk]), follow=True)
         self.assertEqual(hijacked_response.status_code, 200)
-        hijack_released_response = client.post('/hijack/release-hijack/', follow=True)
+        hijack_released_response = client.post(reverse('hijack:release'), follow=True)
         self.assertEqual(hijack_released_response.status_code, 200)
         client.logout()
 
@@ -83,35 +83,15 @@ class HijackTests(BaseHijackTests):
 
     def test_hijack_urls(self):
         self.assertEqual('/hijack/disable-hijack-warning/', reverse('hijack:disable_hijack_warning'))
-        self.assertEqual('/hijack/release-hijack/', reverse('hijack:release_hijack'))
-        self.assertEqual('/hijack/1/', reverse('hijack:login_with_id', args=[1]))
-        self.assertEqual('/hijack/2/', reverse('hijack:login_with_id', kwargs={'user_id': 2}))
-        self.assertEqual('/hijack/username/bob/', reverse('hijack:login_with_username', args=['bob']))
-        self.assertEqual('/hijack/username/bob_too/', reverse('hijack:login_with_username', kwargs={'username': 'bob_too'}))
-        self.assertEqual('/hijack/email/bob@bobsburgers.com/', unquote_plus(reverse('hijack:login_with_email', args=['bob@bobsburgers.com'])))
-        self.assertEqual('/hijack/email/bob_too@bobsburgers.com/', unquote_plus(reverse('hijack:login_with_email', kwargs={'email': 'bob_too@bobsburgers.com'})))
+        self.assertEqual('/hijack/release/', reverse('hijack:release'))
+        self.assertEqual('/hijack/acquire/1/', reverse('hijack:acquire', args=[1]))
+        self.assertEqual('/hijack/acquire/2/', reverse('hijack:acquire', kwargs={'pk': 2}))
 
-    def test_hijack_url_user_id(self):
-        response = self.client.post('/hijack/%d/' % self.user.id, follow=True)
+    def test_hijack_acquire_user(self):
+        response = self.client.post(reverse('hijack:acquire', args=[self.user.pk]), follow=True)
         self.assertHijackSuccess(response)
         self._release_hijack()
-        response = self.client.post('/hijack/%s/' % self.user.username, follow=True)
-        self.assertEqual(response.status_code, 400)
-        response = self.client.post('/hijack/-1/', follow=True)
-        self.assertEqual(response.status_code, 404)
-
-    def test_hijack_url_username(self):
-        response = self.client.post('/hijack/username/%s/' % self.user_username, follow=True)
-        self.assertHijackSuccess(response)
-        self._release_hijack()
-        response = self.client.post('/hijack/username/dfjakhdl/', follow=True)
-        self.assertEqual(response.status_code, 404)
-
-    def test_hijack_url_email(self):
-        response = self.client.post('/hijack/email/%s/' % self.user_email, follow=True)
-        self.assertHijackSuccess(response)
-        self._release_hijack()
-        response = self.client.post('/hijack/email/dfjak@hdl.com/', follow=True)
+        response = self.client.post(reverse('hijack:acquire', args=[1337]), follow=True)  # doe not exist
         self.assertEqual(response.status_code, 404)
 
     def test_hijack_permission_denied(self):
@@ -125,7 +105,7 @@ class HijackTests(BaseHijackTests):
         self.assertHijackPermissionDenied(response)
 
     def test_release_before_hijack(self):
-        response = self.client.post('/hijack/release-hijack/', follow=True)
+        response = self.client.post(reverse('hijack:release'), follow=True)
         self.assertHijackPermissionDenied(response)
 
     def test_last_login_time_not_changed(self):
@@ -171,8 +151,6 @@ class HijackTests(BaseHijackTests):
     def test_settings(self):
         self.assertTrue(hasattr(hijack_settings, 'HIJACK_DISPLAY_WARNING'))
         self.assertTrue(hijack_settings.HIJACK_DISPLAY_WARNING)
-        self.assertTrue(hasattr(hijack_settings, 'HIJACK_URL_ALLOWED_ATTRIBUTES'))
-        self.assertEqual(hijack_settings.HIJACK_URL_ALLOWED_ATTRIBUTES, ('user_id', 'email', 'username'))
         self.assertTrue(hasattr(hijack_settings, 'HIJACK_AUTHORIZE_STAFF'))
         self.assertFalse(hijack_settings.HIJACK_AUTHORIZE_STAFF)
         self.assertTrue(hasattr(hijack_settings, 'HIJACK_AUTHORIZE_STAFF_TO_HIJACK_STAFF'))
@@ -240,11 +218,9 @@ class HijackTests(BaseHijackTests):
     def test_disallow_get_requests(self):
         self.assertFalse(hijack_settings.HIJACK_ALLOW_GET_REQUESTS)
         protected_urls = [
-            '/hijack/{}/'.format(self.user.id),
-            '/hijack/email/{}/'.format(self.user_email),
-            '/hijack/username/{}/'.format(self.user_username),
+            f'/hijack/acquire/{self.user.id}/',
             '/hijack/disable-hijack-warning/',
-            '/hijack/release-hijack/',
+            '/hijack/release/',
         ]
         for protected_url in protected_urls:
             self.assertEqual(self.client.get(protected_url, follow=True).status_code, 405,
