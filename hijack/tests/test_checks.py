@@ -8,8 +8,7 @@ else:
     from django.core.checks import Error, Warning
     from django.test import TestCase
 
-    from hijack import checks
-    from hijack import settings as hijack_settings
+    from hijack import checks, settings as hijack_settings
     from hijack.apps import HijackConfig
     from hijack.tests.utils import SettingsOverride
 
