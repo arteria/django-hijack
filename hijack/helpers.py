@@ -22,10 +22,7 @@ from hijack.signals import hijack_ended, hijack_started
 
 @contextlib.contextmanager
 def no_update_last_login():
-    """
-    Disconnect any signals to update_last_login() for the scope of the context
-    manager, then restore.
-    """
+    """Disconnect any signals to ``update_last_login`` and reconnect them on exit."""
     kw = {'receiver': update_last_login}
     kw_id = {'receiver': update_last_login, 'dispatch_uid': 'update_last_login'}
 
@@ -79,7 +76,8 @@ def release_hijack(request):
 
 
 def is_authorized_default(hijacker, hijacked):
-    """Checks if the user has the correct permission to Hijack another user.
+    """
+    Check if the user has the correct permission to Hijack another user.
 
     By default only superusers are allowed to hijack.
 
@@ -92,7 +90,6 @@ def is_authorized_default(hijacker, hijacked):
 
     Staff users can never hijack superusers.
     """
-
     if hijacker.is_superuser:
         return True
 
@@ -108,9 +105,7 @@ def is_authorized_default(hijacker, hijacked):
 
 
 def is_authorized(hijack, hijacked):
-    '''
-    Evaluates the authorization check specified in settings
-    '''
+    """Evaluate the authorization check specified in settings."""
     authorization_check = import_string(hijack_settings.HIJACK_AUTHORIZATION_CHECK)
     return authorization_check(hijack, hijacked)
 
@@ -121,7 +116,7 @@ def check_hijack_authorization(request, user):
 
 
 def login_user(request, hijacked):
-    ''' hijack mechanism '''
+    """Hijack user login."""
     hijacker = request.user
     hijack_history = [request.user._meta.pk.value_to_string(hijacker)]
     if request.session.get('hijack_history'):

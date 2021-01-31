@@ -1,3 +1,5 @@
+import warnings
+
 import django
 from django import template
 from django.template.loader import render_to_string
@@ -12,9 +14,7 @@ register = template.Library()
 
 @register.filter
 def hijackNotification(request):
-    """
-    Deprecated. Use the template tag "hijack_notification" below
-    """
+    warnings.warn('Deprecated favoring "hijack_notification".', DeprecationWarning)
     return _render_hijack_notification(request)
 
 
