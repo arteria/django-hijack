@@ -40,7 +40,7 @@ def _render_hijack_notification(request, template_name=None):
             ans = render_to_string(template_name, context_instance=RequestContext(request))
         else:
             ans = render_to_string(template_name, request=request)
-    return mark_safe(ans)
+    return mark_safe(ans)  # nosec
 
 
 @register.filter
